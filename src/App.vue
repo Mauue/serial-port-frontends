@@ -1,21 +1,31 @@
 <template>
   <div id="app">
-    <div>串口调试助手</div>
+    <div style="padding: 30px; font-size: 30px">串口调试助手</div>
     <el-row>
-      <el-col :span="4"><div>
-        串口列表
-        <div
+      <el-col :span="4">
+        <div style="background: #fedcbd; padding:20px; padding-bottom: 300px; border-radius: 10px 10px 10px 10px;" >串口列表
+          <div
             v-for="port in ports"
-            :key="port.name"
-        >
-          {{port.name}}
+            :key="port.name">
+            {{port.name}}
           <el-switch
               v-model="port.enabled"
               active-color="#13ce66"
               inactive-color="#ff4949">
           </el-switch>
         </div>
-      </div></el-col>
+      </div>
+
+        <template>
+          <div style="background: #abc88b; padding:20px; padding-bottom: 260px; border-radius: 10px 10px 10px 10px;" >显示方式
+            <el-radio  v-model="radio" label="1">Text</el-radio>
+            <el-radio  v-model="radio" label="2">Hex</el-radio>
+          </div>
+        </template>
+      </el-col>
+
+
+
       <el-col :span="16"><div >
         <el-tabs v-model="portSelected" type="card" >
           <el-tab-pane
@@ -24,10 +34,10 @@
               :label="item.name"
               :name="item.name"
           >
-            <div style="display: flex; flex-wrap: nowrap; flex-direction: row">
+            <div style="display: flex; padding: 30px; flex-wrap: nowrap; flex-direction: row">
               <div>
                 波特率：
-                <el-select v-model="item.baud" size="mini">
+                <el-select v-model="item.baud" size="small" style="width:50%">
                   <el-option
                       v-for="item in baudList"
                       :key="item"
@@ -38,7 +48,7 @@
               </div>
               <div>
                 数字位：
-                <el-select v-model="item.number" size="mini">
+                <el-select v-model="item.number" size="small" style="width:30%">
                   <el-option
                       v-for="item in numberList"
                       :key="item"
@@ -49,7 +59,7 @@
               </div>
               <div>
                 校验位：
-                <el-select v-model="item.check" size="mini">
+                <el-select v-model="item.check" size="small" style="width:30%">
                   <el-option
                       v-for="item in checkList"
                       :key="item"
@@ -60,7 +70,7 @@
               </div>
               <div>
                 奇偶位：
-                <el-select v-model="item.oe" size="mini">
+                <el-select v-model="item.oe" size="small" style="width:30%">
                   <el-option
                       v-for="item in oeList"
                       :key="item"
@@ -70,10 +80,32 @@
                 </el-select>
               </div>
             </div>
-            {{item.name}}
+
+            <div style="padding-left: 30px ">
+              {{item.name}}
+            </div>
           </el-tab-pane>
+
+
+        <div ref="chart" style="width: 1000px;height:400px;"></div>
         </el-tabs>
-        <div ref="chart" style="width: 600px;height:400px;"></div>
+        <el-input
+            style="width:80%;padding-left: 30px"
+            type="textarea"
+            :rows="4"
+            placeholder="输出区"
+            v-model="output"
+            :disabled="true"
+        >
+        </el-input>
+        <el-input 
+            style="margin-top: 30px; width:80%;padding-left: 30px"
+            type="textarea"
+            :rows="4"
+            placeholder="输入区"
+            v-model="textarea">
+        </el-input>
+
 
       </div></el-col>
     </el-row>
@@ -99,6 +131,7 @@ export default {
         1200, 2400, 4800, 9600, 19200, 38400, 57600, 74800, 115200, 230400, 460800, 500000, 576000, 921600, 1000000,
         1152000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000
       ],
+      radio: '1', //1-Text,2-Hex
       numberList:[5, 6, 7, 8],
       oeList:[5, 6, 7, 8],
       checkList:[5, 6, 7, 8],
@@ -111,12 +144,25 @@ export default {
         },
         series: [
           {
-            data: [820, 932, 901, 934, 1290, 1330, 1320],
+            data: [
+                [0,100],
+                [1,200],
+                [3,300],
+                [4,1290],
+                [5,1330],
+                [6,820],
+                [7,932],
+                [8,1500],
+                [9,1900],
+                [10,500],
+            ],
             type: 'line',
             smooth: true
           }
         ]
-      }
+      },
+      textarea: '',
+      output:''
     }
   },
   methods:{
@@ -140,12 +186,20 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
   margin-top: 60px;
+  font-size:larger;
 }
 .el-row {
-  margin-bottom: 20px;
+  margin-top:30px;
+  margin-bottom:30px;
+  padding-right:30px;
+  padding-left:30px;
+  line-height: 40px;
+  border-radius: 15px 15px 15px 15px;
+
 }
 .el-col {
   border-radius: 4px;
+  border-radius: 15px 15px 15px 15px;
 }
 .bg-purple-dark {
   background: #99a9bf;
