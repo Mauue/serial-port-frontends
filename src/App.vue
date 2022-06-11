@@ -10,8 +10,10 @@
             {{port.name}}
           <el-switch
               v-model="port.enabled"
+              @change="wsChange(port.name, port.enabled)"
               active-color="#13ce66"
               inactive-color="#ff4949">
+
           </el-switch>
         </div>
       </div>
@@ -27,7 +29,7 @@
 
 
       <el-col :span="16"><div >
-        <el-tabs v-model="portSelected" type="card" >
+        <el-tabs v-model="portSelected" type="card" @tab-click="tabChange">
           <el-tab-pane
               :key="item.name"
               v-for="item in ports"
@@ -123,9 +125,9 @@ export default {
     return{
       portSelected: "port1",
       ports:[
-        {name: "port1", baud: 1152000, number:8, oe: 8, check: 8, enabled: true},
-        {name: "port2", baud: 1152000, number:8, oe: 8, check: 8, enabled: true},
-        {name: "port3", baud: 1152000, number:8, oe: 8, check: 8, enabled: true},
+        // {ws: null, name: "COM2", baud: 1152000, number:8, oe: 8, check: 8, enabled: false,  data: []},
+        // {ws: null, name: "COM3", baud: 1152000, number:8, oe: 8, check: 8, enabled: false,  data: []},
+        // {ws: null, name: "COM4", baud: 1152000, number:8, oe: 8, check: 8, enabled: false,  data: []},
       ],
       baudList:[
         1200, 2400, 4800, 9600, 19200, 38400, 57600, 74800, 115200, 230400, 460800, 500000, 576000, 921600, 1000000,
@@ -136,8 +138,12 @@ export default {
       oeList:[5, 6, 7, 8],
       checkList:[5, 6, 7, 8],
       chartOption:{
+        dataZoom:{
+          type: "slider",
+        },
         xAxis: {
           type: 'value',
+          minInterval: 1,
         },
         yAxis: {
           type: 'value'
@@ -145,16 +151,6 @@ export default {
         series: [
           {
             data: [
-                [0,100],
-                [1,200],
-                [3,300],
-                [4,1290],
-                [5,1330],
-                [6,820],
-                [7,932],
-                [8,1500],
-                [9,1900],
-                [10,500],
             ],
             type: 'line',
             smooth: true
@@ -162,19 +158,100 @@ export default {
         ]
       },
       textarea: '',
-      output:''
+      output:'',
+      myChart: null,
     }
   },
   methods:{
     drawCharts: function (){
       let chartDom = this.$refs.chart;
       console.log(chartDom)
-      let myChart = this.$echarts.init(chartDom);
-      this.chartOption && myChart.setOption(this.chartOption);
-    }
+      this.myChart = this.$echarts.init(chartDom);
+      this.chartOption && this.myChart.setOption(this.chartOption);
+    },
+    tabChange: function (tab){
+      console.log(this.ports.find(item=>item.name===tab.label).data)
+      this.myChart.setOption({series: [
+          {
+            data: this.ports.find(item=>item.name===tab.label).data,
+            type: 'line',
+            smooth: true
+          }
+        ]})
+    },
+    ab2str: function (buf){
+      return String.fromCharCode.apply(null, new Uint8Array(buf));
+    },
+    wsChange: function (port_name, enabled){
+      let _this = this
+      if(enabled){
+        let port = this.ports.find(item=>item.name===port_name);
+        let buffer = ""
+        setTimeout(()=>{
+          let websocket = new WebSocket("ws://127.0.0.1:8083" + "/serialconsole?portname=" + port_name);
+          websocket.binaryType = "arraybuffer";
+          websocket.onopen = function () {
+
+            websocket.onmessage = function (evt) {
+
+              if (evt.data instanceof ArrayBuffer) {
+                let d = _this.ab2str(evt.data)
+                if(d.endsWith("\r") || d.endsWith("\n") || d.endsWith("\r\n") || d.endsWith("\n\r")) {
+                  _this.output += buffer + d
+                  d = d.replace("\r|\n", "")
+                  buffer += d
+                  if(buffer.length === 0) return
+                  let num =  Number.parseInt(buffer)
+                  if (isNaN(num)) return;
+                  port.data.push([port.data.length, num])
+                  _this.myChart.setOption({series: [
+                      {
+                        data: port.data,
+                        type: 'line',
+                        smooth: true
+                      }
+                    ]})
+                  buffer = ""
+                }else{
+                  buffer += d
+                }
+              }
+            }
+
+            websocket.onclose = function () {
+              port.ws = null
+              websocket.close()
+            }
+
+            websocket.onerror = function (evt) {
+              if (typeof console.log == "function") {
+                console.log(evt)
+              }
+            }
+          }
+          port.ws = websocket
+        }, 1)
+
+      console.log(port_name, enabled)
+    }}
   },
   mounted() {
     this.drawCharts()
+    this.$axios
+        .get('/api/get/config')
+        .then(response => {
+          console.log(response.data)
+          let ports = response.data.Ports
+          console.log(ports)
+          for(let i =0;i<ports.length;i++){
+            this.ports.push({
+             ws: null, name: ports[i]["Name"], baud: ports[i]["Baudrate"], number:8, oe: 8, check: 8, enabled: false,  data: [],
+            })
+          }
+        })
+        .catch(function (error) { // 请求失败处理
+          console.log(error);
+        });
   }
 }
 </script>
